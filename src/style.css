@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Custom Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #050508;
+  color: #ffffff;
+  font-family: 'Rajdhani', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00f0ff;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff00ff;
+}
+
+/* Custom Components */
+@layer components {
+  .cyber-text {
+    text-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff, 0 0 30px #00f0ff;
+  }
+
+  .cyber-button {
+    @apply relative bg-transparent border-2 border-cyber-primary text-cyber-primary px-6 py-3 font-cyber font-bold uppercase tracking-wider overflow-hidden transition-all duration-300;
+  }
+
+  .cyber-button::before {
+    @apply content-[''] absolute top-0 left-[-100%] w-full h-full bg-gradient-to-r from-transparent via-cyber-primary/40 to-transparent transition-all duration-500;
+  }
+
+  .cyber-button:hover::before {
+    @apply left-[100%];
+  }
+
+  .cyber-button:hover {
+    @apply bg-cyber-primary/10 shadow-[0_0_20px_#00f0ff44] -translate-y-0.5;
+  }
+
+  .cyber-card {
+    @apply bg-gradient-to-br from-cyber-card to-cyber-dark border border-cyber-border rounded-xl transition-all duration-300 relative overflow-hidden;
+  }
+
+  .cyber-card::before {
+    @apply content-[''] absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-cyber-primary/10 to-transparent opacity-0 transition-opacity duration-300;
+  }
+
+  .cyber-card:hover::before {
+    @apply opacity-100;
+  }
+
+  .cyber-card:hover {
+    @apply border-cyber-primary shadow-[0_10px_30px_#00f0ff22] -translate-y-2;
+  }
+
+  .cyber-input {
+    @apply bg-cyber-card border-2 border-cyber-border text-white px-4 py-3 font-tech transition-all duration-300 resize-none;
+  }
+
+  .cyber-input:focus {
+    @apply outline-none border-cyber-primary shadow-[0_0_20px_#00f0ff44] bg-cyber-card;
+  }
+
+  .cyber-input::placeholder {
+    @apply text-gray-500;
+  }
+
+  .cyber-loader {
+    @apply w-12 h-12 border-4 border-cyber-primary border-t-transparent rounded-full animate-spin;
+  }
+}
+
+/* Custom Utilities */
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-cyber-primary via-cyber-secondary to-cyber-accent bg-clip-text text-transparent;
+  }
+
+  .border-gradient {
+    @apply border-2 border-transparent bg-gradient-to-r from-cyber-primary to-cyber-secondary bg-origin-border;
+  }
+
+  .glow {
+    @apply animate-glow;
+  }
+
+  .matrix-bg {
+    @apply fixed top-0 left-0 w-full h-full pointer-events-none z-[-1];
+    background: linear-gradient(180deg, #050508 0%, #0a0a0f 100%);
+  }
+
+  .matrix-bg::before {
+    @apply content-[''] absolute top-0 left-0 w-full h-full;
+    background-image: 
+      linear-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 240, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridMove 20s linear infinite;
+  }
+
+  .scan-line {
+    @apply fixed top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-cyber-primary to-transparent animate-scan z-[1000] pointer-events-none;
+  }
+}
+
+/* Keyframe Animations */
+@keyframes gridMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes cyberCardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Animation Classes */
+.typing-cursor {
+  animation: blink 1s infinite;
+}
+
+.animate-cyber-card {
+  animation: cyberCardEntrance 0.8s ease-out forwards;
+}
+
+.skill-progress::after {
+  animation: shine 2s infinite;
+}
