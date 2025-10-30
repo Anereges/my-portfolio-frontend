@@ -457,7 +457,7 @@ import {
 const { createParticleEffect } = useAnimations()
 
 // API Configuration - Match FastAPI exactly
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/skills`, {
 const API_ENDPOINTS = {
   PROJECTS: `${API_BASE_URL}/api/v1/projects`,
   FEATURED_PROJECTS: `${API_BASE_URL}/api/v1/projects/featured`

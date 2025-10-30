@@ -412,7 +412,9 @@ const fetchSkills = async () => {
     
     console.log('🔍 Fetching skills from API...')
     
-    const response = await fetch('http://127.0.0.1:8000/api/v1/skills', {
+    // ✅ FIX: USE ENVIRONMENT VARIABLE INSTEAD OF HARDCODED URL
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    const response = await fetch(`${API_BASE_URL}/api/v1/skills`, {  // ✅ CORRECT!
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
