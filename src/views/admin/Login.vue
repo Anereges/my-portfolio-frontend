@@ -210,18 +210,9 @@ import {
   ArrowLeft 
 } from 'lucide-vue-next'
 
-// ✅ FIXED: Proper API URL configuration for production
-const getApiBaseUrl = () => {
-  // For production - use your Render backend URL
-  if (import.meta.env.PROD) {
-    return 'https://my-portfolio-backend-0w34.onrender.com'
-  }
-  // For development - use localhost
-  return import.meta.env.VITE_API_URL || 'http://localhost:8000'
-}
-
-const API_BASE_URL = getApiBaseUrl()
-console.log('🚀 Using API URL:', API_BASE_URL)
+// 🚨 IMMEDIATE FIX: HARDCODE THE API URL
+const API_BASE_URL = 'https://my-portfolio-backend-0w34.onrender.com'
+console.log('🚀 HARDCODED API URL:', API_BASE_URL)
 
 const router = useRouter()
 const { createParticleEffect } = useAnimations()
