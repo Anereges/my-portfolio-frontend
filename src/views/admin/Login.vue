@@ -210,6 +210,19 @@ import {
   ArrowLeft 
 } from 'lucide-vue-next'
 
+// ✅ FIXED: Proper API URL configuration for production
+const getApiBaseUrl = () => {
+  // For production - use your Render backend URL
+  if (import.meta.env.PROD) {
+    return 'https://my-portfolio-backend-0w34.onrender.com'
+  }
+  // For development - use localhost
+  return import.meta.env.VITE_API_URL || 'http://localhost:8000'
+}
+
+const API_BASE_URL = getApiBaseUrl()
+console.log('🚀 Using API URL:', API_BASE_URL)
+
 const router = useRouter()
 const { createParticleEffect } = useAnimations()
 
@@ -318,7 +331,7 @@ const clearSecurityTracking = () => {
   securityLevel.value = 'MAXIMUM'
 }
 
-// Enhanced login handler with robust security
+// ✅ FIXED: Enhanced login handler with better error handling
 const handleLogin = async () => {
   // Check security status before attempting login
   const securityStatus = checkSecurityStatus()
@@ -334,8 +347,9 @@ const handleLogin = async () => {
   accessDenied.value = false
 
   try {
-    // Enhanced login request with security headers
-    const response = await fetch('/api/v1/admin/login', {
+    console.log('🔐 Attempting login to:', `${API_BASE_URL}/api/v1/admin/login`)
+    
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -347,7 +361,9 @@ const handleLogin = async () => {
         username: loginData.username,
         password: loginData.password,
         remember: loginData.remember
-      })
+      }),
+      // ✅ ADD: Timeout to prevent hanging requests
+      signal: AbortSignal.timeout(10000)
     })
 
     const data = await response.json()
@@ -432,9 +448,22 @@ const handleLogin = async () => {
 
   } catch (error) {
     console.error('🔒 SECURITY ERROR:', error)
-    trackFailedAttempt()
-    loginError.value = true
-    accessDenied.value = true
+    
+    // ✅ FIXED: Better error handling
+    if (error.name === 'AbortError') {
+      loginError.value = true
+      accessDenied.value = true
+      console.error('⏰ Login timeout - Backend might be sleeping')
+    } else if (error.message.includes('Failed to fetch')) {
+      trackFailedAttempt()
+      loginError.value = true
+      accessDenied.value = true
+      console.error('🌐 Network error - Cannot connect to backend server')
+    } else {
+      trackFailedAttempt()
+      loginError.value = true
+      accessDenied.value = true
+    }
     
     // Network error effects
     createParticleEffect({ clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 }, '#ff5500')
@@ -509,8 +538,28 @@ const debugAuthStatus = () => {
   console.groupEnd()
 }
 
+// ✅ ADDED: Test backend connection
+const testBackendConnection = async () => {
+  try {
+    console.log('🧪 Testing backend connection to:', API_BASE_URL)
+    const testResponse = await fetch(`${API_BASE_URL}/api/v1/admin/health`, {
+      signal: AbortSignal.timeout(5000)
+    })
+    console.log('🔗 Backend connection test:', {
+      status: testResponse.status,
+      ok: testResponse.ok,
+      url: API_BASE_URL
+    })
+  } catch (testError) {
+    console.error('🔗 Backend connection FAILED:', testError)
+  }
+}
+
 // Initialize security check on component mount
-onMounted(() => {
+onMounted(async () => {
+  // Test backend connection first
+  await testBackendConnection()
+  
   checkSecurityStatus()
   
   // Auto-clear old failed attempts
@@ -520,7 +569,7 @@ onMounted(() => {
   }
   
   // Debug info in development
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     debugAuthStatus()
   }
 })

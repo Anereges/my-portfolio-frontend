@@ -404,21 +404,32 @@ const averageProficiency = computed(() => {
   return Math.round(total / skills.value.length)
 })
 
-// ✅ FIXED: Simplified fetchSkills function
+// ✅ FIXED: Proper API URL configuration for production
+const getApiBaseUrl = () => {
+  // For production - use your Render backend URL
+  if (import.meta.env.PROD) {
+    return 'https://my-portfolio-backend-0w34.onrender.com'
+  }
+  // For development - use localhost
+  return import.meta.env.VITE_API_URL || 'http://localhost:8000'
+}
+
+// ✅ FIXED: Enhanced fetchSkills function
 const fetchSkills = async () => {
   try {
     loading.value = true
     error.value = null
     
-    console.log('🔍 Fetching skills from API...')
+    const API_BASE_URL = getApiBaseUrl()
+    console.log('🔍 Fetching skills from API:', `${API_BASE_URL}/api/v1/skills`)
     
-    // ✅ FIX: USE ENVIRONMENT VARIABLE INSTEAD OF HARDCODED URL
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    const response = await fetch(`${API_BASE_URL}/api/v1/skills`, {  // ✅ CORRECT!
+    const response = await fetch(`${API_BASE_URL}/api/v1/skills`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-      }
+      },
+      // ✅ ADD: Timeout to prevent hanging requests
+      signal: AbortSignal.timeout(10000)
     })
     
     if (!response.ok) {
@@ -450,7 +461,15 @@ const fetchSkills = async () => {
     
   } catch (err) {
     console.error('❌ Failed to fetch skills:', err)
-    error.value = `Failed to load skills: ${err.message}`
+    
+    // ✅ FIXED: Better error handling
+    if (err.name === 'AbortError') {
+      error.value = 'Request timeout - Backend might be sleeping'
+    } else if (err.message.includes('Failed to fetch')) {
+      error.value = 'Cannot connect to backend server. Please check if backend is running.'
+    } else {
+      error.value = `Failed to load skills: ${err.message}`
+    }
     
     // Use fallback skills when API fails
     skills.value = getFallbackSkills()
@@ -459,17 +478,6 @@ const fetchSkills = async () => {
     loading.value = false
   }
 }
-
-// Remove calculateProficiency function since your API now provides proficiency directly
-// const calculateProficiency = (level) => {
-//   const levelMap = {
-//     'beginner': 40,
-//     'intermediate': 65,
-//     'advanced': 80,
-//     'expert': 95
-//   }
-//   return levelMap[level] || 50
-// }
 
 // Fallback skills data for when API is not available
 const getFallbackSkills = () => {
@@ -502,6 +510,26 @@ const getFallbackSkills = () => {
       experience: '4+ years experience',
       level: 'expert',
       years_of_experience: 4,
+      featured: false
+    },
+    {
+      _id: '4',
+      name: 'FastAPI',
+      proficiency: 88,
+      category: 'Backend',
+      experience: '3+ years experience',
+      level: 'advanced',
+      years_of_experience: 3,
+      featured: true
+    },
+    {
+      _id: '5',
+      name: 'React',
+      proficiency: 82,
+      category: 'Frontend',
+      experience: '2+ years experience',
+      level: 'advanced',
+      years_of_experience: 2,
       featured: false
     }
   ]
@@ -740,7 +768,24 @@ const animateSkillBar = (skill) => {
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // ✅ ADDED: Test backend connection first
+  const API_BASE_URL = getApiBaseUrl()
+  console.log('🧪 Testing backend connection to:', API_BASE_URL)
+  
+  try {
+    const testResponse = await fetch(`${API_BASE_URL}/api/v1/skills`, { 
+      signal: AbortSignal.timeout(5000) 
+    })
+    console.log('🔗 Backend connection test:', {
+      status: testResponse.status,
+      ok: testResponse.ok,
+      url: API_BASE_URL
+    })
+  } catch (testError) {
+    console.error('🔗 Backend connection FAILED:', testError)
+  }
+  
   fetchSkills() // Load real skills from API
 
   // Animate skill bars on load

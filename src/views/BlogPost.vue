@@ -247,12 +247,23 @@ import {
 const route = useRoute()
 const router = useRouter()
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// ✅ FIXED: Proper API URL configuration for production
+const getApiBaseUrl = () => {
+  // For production - use your Render backend URL
+  if (import.meta.env.PROD) {
+    return 'https://my-portfolio-backend-0w34.onrender.com'
+  }
+  // For development - use localhost
+  return import.meta.env.VITE_API_URL || 'http://localhost:8000'
+}
+
+const API_BASE_URL = getApiBaseUrl()
 const API_ENDPOINTS = {
   BLOG_POST: `${API_BASE_URL}/api/v1/blog/posts`,
   BLOG_POSTS: `${API_BASE_URL}/api/v1/blog/posts`
 }
+
+console.log('🚀 Using API URL:', API_BASE_URL)
 
 // Reactive data
 const post = ref(null)
@@ -324,7 +335,7 @@ const processMarkdownImages = (markdown) => {
   })
 }
 
-// Methods
+// ✅ FIXED: Enhanced fetchPost with better error handling
 const fetchPost = async () => {
   try {
     loading.value = true
@@ -332,13 +343,17 @@ const fetchPost = async () => {
     featuredImageError.value = false
     
     const identifier = route.params.id || route.params.slug
-    console.log('Fetching post with identifier:', identifier)
+    console.log('🔍 Fetching post with identifier:', identifier)
+    console.log('📡 API URL:', `${API_ENDPOINTS.BLOG_POST}/${identifier}`)
     
     if (!identifier) {
       throw new Error('No post identifier provided')
     }
 
-    const response = await fetch(`${API_ENDPOINTS.BLOG_POST}/${identifier}`)
+    const response = await fetch(`${API_ENDPOINTS.BLOG_POST}/${identifier}`, {
+      // ✅ ADD: Timeout to prevent hanging requests
+      signal: AbortSignal.timeout(10000)
+    })
     
     if (!response.ok) {
       if (response.status === 404) {
@@ -348,7 +363,7 @@ const fetchPost = async () => {
     }
 
     post.value = await response.json()
-    console.log('Post loaded successfully:', post.value)
+    console.log('✅ Post loaded successfully:', post.value)
     
     // Log image details for debugging
     if (post.value.featured_image) {
@@ -362,26 +377,45 @@ const fetchPost = async () => {
     updateMetaTags()
     
   } catch (err) {
-    console.error('Error fetching post:', err)
+    console.error('❌ Error fetching post:', err)
     error.value = true
-    showToast('Error loading article', AlertCircle, 'text-cyber-accent')
+    
+    // ✅ FIXED: Better error messages
+    if (err.name === 'AbortError') {
+      showToast('Request timeout - Backend might be sleeping', AlertCircle, 'text-cyber-accent')
+    } else if (err.message.includes('Failed to fetch')) {
+      showToast('Cannot connect to backend server', AlertCircle, 'text-cyber-accent')
+    } else {
+      showToast('Error loading article: ' + err.message, AlertCircle, 'text-cyber-accent')
+    }
   } finally {
     loading.value = false
   }
 }
 
+// ✅ FIXED: Enhanced fetchRelatedPosts with error handling
 const fetchRelatedPosts = async () => {
   try {
     if (!post.value) return
     
-    const response = await fetch(`${API_BASE_URL}/api/v1/blog/posts?category=${post.value.category}&size=3`)
+    console.log('🔍 Fetching related posts for category:', post.value.category)
+    
+    const response = await fetch(`${API_BASE_URL}/api/v1/blog/posts?category=${post.value.category}&size=3`, {
+      signal: AbortSignal.timeout(5000)
+    })
     
     if (response.ok) {
       const data = await response.json()
-      relatedPosts.value = data.items.filter(p => p._id !== post.value._id).slice(0, 3)
+      // ✅ FIX: Handle different API response formats
+      const posts = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : [])
+      relatedPosts.value = posts.filter(p => p._id !== post.value._id).slice(0, 3)
+      console.log('✅ Loaded related posts:', relatedPosts.value.length)
+    } else {
+      console.warn('⚠️ Failed to fetch related posts, using empty array')
+      relatedPosts.value = []
     }
   } catch (err) {
-    console.error('Error fetching related posts:', err)
+    console.error('❌ Error fetching related posts:', err)
     relatedPosts.value = []
   }
 }
@@ -596,9 +630,31 @@ const smoothScroll = (e) => {
   }
 }
 
+// ✅ ADDED: Test backend connection
+const testBackendConnection = async () => {
+  try {
+    console.log('🧪 Testing backend connection to:', API_BASE_URL)
+    const testResponse = await fetch(`${API_BASE_URL}/api/v1/blog/posts?limit=1`, {
+      signal: AbortSignal.timeout(5000)
+    })
+    console.log('🔗 Backend connection test:', {
+      status: testResponse.status,
+      ok: testResponse.ok,
+      url: API_BASE_URL
+    })
+  } catch (testError) {
+    console.error('🔗 Backend connection FAILED:', testError)
+  }
+}
+
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  // Test backend connection first
+  await testBackendConnection()
+  
+  // Then fetch the post
   fetchPost()
+  
   window.addEventListener('scroll', updateScrollProgress)
   document.addEventListener('keydown', handleKeydown)
   

@@ -456,12 +456,23 @@ import {
 
 const { createParticleEffect } = useAnimations()
 
-// API Configuration - Match FastAPI exactly
-const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/skills`, {
+// ✅ FIXED: Proper API URL configuration for production
+const getApiBaseUrl = () => {
+  // For production - use your Render backend URL
+  if (import.meta.env.PROD) {
+    return 'https://my-portfolio-backend-0w34.onrender.com'
+  }
+  // For development - use localhost
+  return import.meta.env.VITE_API_URL || 'http://localhost:8000'
+}
+
+const API_BASE_URL = getApiBaseUrl()
 const API_ENDPOINTS = {
   PROJECTS: `${API_BASE_URL}/api/v1/projects`,
   FEATURED_PROJECTS: `${API_BASE_URL}/api/v1/projects/featured`
 }
+
+console.log('🚀 Using API URL:', API_BASE_URL)
 
 // Reactive state
 const projects = ref([])
@@ -639,17 +650,21 @@ const activateProjectCard = (event) => {
   createParticleEffect(event)
 }
 
-// API functions - COMPATIBLE WITH FASTAPI
+// ✅ FIXED: Enhanced API functions with better error handling
 const fetchProjects = async () => {
   loading.value = true
   error.value = ''
   
   try {
+    console.log('🔍 Fetching projects from:', API_ENDPOINTS.PROJECTS)
+    
     const response = await fetch(API_ENDPOINTS.PROJECTS, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-      }
+      },
+      // ✅ ADD: Timeout to prevent hanging requests
+      signal: AbortSignal.timeout(10000)
     })
 
     if (!response.ok) {
@@ -662,7 +677,7 @@ const fetchProjects = async () => {
     // ✅ FIX: Extract items from paginated response
     projects.value = Array.isArray(result.items) ? result.items : []
     
-    console.log(`Loaded ${projects.value.length} projects from FastAPI`)
+    console.log(`✅ Loaded ${projects.value.length} projects from FastAPI`)
     
     // Animate projects on load
     await nextTick()
@@ -675,14 +690,20 @@ const fetchProjects = async () => {
     }
     
   } catch (err) {
-    console.error('Failed to fetch projects:', err)
-    error.value = err.message || 'Failed to load projects from backend'
+    console.error('❌ Failed to fetch projects:', err)
+    
+    // ✅ FIXED: Better error handling
+    if (err.name === 'AbortError') {
+      error.value = 'Request timeout - Backend might be sleeping'
+    } else if (err.message.includes('Failed to fetch')) {
+      error.value = 'Cannot connect to backend server. Please check if backend is running.'
+    } else {
+      error.value = err.message || 'Failed to load projects from backend'
+    }
     
     // Enhanced demo data for development
-    if (import.meta.env.DEV) {
-      console.log('Using enhanced demo data for development')
-      projects.value = getDemoProjects()
-    }
+    console.log('🔄 Using demo data')
+    projects.value = getDemoProjects()
   } finally {
     loading.value = false
   }
@@ -768,13 +789,55 @@ const getDemoProjects = () => {
       likes: 67,
       created_at: new Date('2024-01-20').toISOString(),
       updated_at: new Date('2024-07-25').toISOString()
+    },
+    {
+      _id: '4',
+      title: 'Enterprise CRM System',
+      description: 'Comprehensive Customer Relationship Management system for large enterprises with advanced analytics and automation features.',
+      short_description: 'Enterprise-grade CRM with analytics and automation',
+      category: 'enterprise',
+      status: 'deployed',
+      featured: true,
+      technologies: ['Vue.js', 'Node.js', 'MongoDB', 'Redis', 'Docker', 'AWS'],
+      github_url: 'https://github.com/user/enterprise-crm',
+      live_url: 'https://crm.example.com',
+      demo_url: 'https://demo.crm.example.com',
+      image_url: null,
+      gallery: [],
+      start_date: new Date('2024-01-01').toISOString(),
+      end_date: new Date('2024-05-30').toISOString(),
+      client: 'Enterprise Solutions Ltd',
+      challenges: ['Scalability', 'Data security', 'Integration complexity'],
+      solutions: ['Microservices', 'Encryption at rest', 'RESTful APIs'],
+      metrics: { customers: 5000, uptime: '99.95%', efficiency: '60%' },
+      tags: ['enterprise', 'crm', 'analytics', 'automation'],
+      views: 2100,
+      likes: 89,
+      created_at: new Date('2023-12-15').toISOString(),
+      updated_at: new Date('2024-05-30').toISOString()
     }
   ]
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // ✅ ADDED: Test backend connection first
+  console.log('🧪 Testing backend connection to:', API_BASE_URL)
+  
+  try {
+    const testResponse = await fetch(`${API_BASE_URL}/api/v1/projects`, { 
+      signal: AbortSignal.timeout(5000) 
+    })
+    console.log('🔗 Backend connection test:', {
+      status: testResponse.status,
+      ok: testResponse.ok,
+      url: API_BASE_URL
+    })
+  } catch (testError) {
+    console.error('🔗 Backend connection FAILED:', testError)
+  }
+  
   fetchProjects()
-  console.log('Cyber Project Arsenal activated - FastAPI Compatible')
+  console.log('🚀 Cyber Project Arsenal activated - FastAPI Compatible')
 })
 </script>
 
