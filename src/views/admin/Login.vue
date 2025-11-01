@@ -210,22 +210,14 @@ import {
   ArrowLeft 
 } from 'lucide-vue-next'
 
-// ✅ FIXED: Correct API URL configuration
-const getApiBaseUrl = () => {
-  // For production - use your actual Render backend URL
-  if (import.meta.env.PROD) {
-    return 'https://my-portfolio-backend-0w34.onrender.com'
-  }
-  // For development - use localhost
-  return 'http://localhost:5000'
-}
-
-const API_BASE_URL = getApiBaseUrl()
-console.log('🚀 Using API URL:', API_BASE_URL)
-console.log('🌐 Environment:', import.meta.env.MODE)
+// ✅ FINAL FIXED VERSION
+// Use environment variable first, fallback to hardcoded URL if needed
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://my-portfolio-backend-0w34.onrender.com';
+console.log('🚀 Using API URL:', API_BASE_URL);
 
 const router = useRouter();
 const { createParticleEffect } = useAnimations();
+
 
 // Reactive state
 const loading = ref(false)
@@ -332,7 +324,7 @@ const clearSecurityTracking = () => {
   securityLevel.value = 'MAXIMUM'
 }
 
-// ✅ FIXED: Enhanced login handler with proper URL construction
+// ✅ FIXED: Enhanced login handler with better error handling
 const handleLogin = async () => {
   // Check security status before attempting login
   const securityStatus = checkSecurityStatus()
@@ -348,11 +340,9 @@ const handleLogin = async () => {
   accessDenied.value = false
 
   try {
-    // ✅ FIXED: Construct the full URL properly
-    const loginUrl = `${API_BASE_URL}/api/v1/admin/login`
-    console.log('🔐 Attempting login to:', loginUrl)
+    console.log('🔐 Attempting login to:', `${API_BASE_URL}/api/v1/admin/login`)
     
-    const response = await fetch(loginUrl, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -364,18 +354,14 @@ const handleLogin = async () => {
         username: loginData.username,
         password: loginData.password,
         remember: loginData.remember
-      })
+      }),
+      // ✅ ADD: Timeout to prevent hanging requests
+      signal: AbortSignal.timeout(10000)
     })
 
-    // ✅ FIXED: Better response handling
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-
     const data = await response.json()
-    console.log('📡 Login response:', data)
 
-    if (data.success) {
+    if (response.ok && data.success) {
       // Clear security tracking on successful login
       clearSecurityTracking()
 
@@ -428,7 +414,7 @@ const handleLogin = async () => {
 
     } else {
       // Handle different error cases
-      if (data.detail && data.detail.includes('Invalid credentials')) {
+      if (response.status === 401) {
         trackFailedAttempt()
         loginError.value = true
         accessDenied.value = true
@@ -439,28 +425,33 @@ const handleLogin = async () => {
         if (failedAttempts.value >= 5) {
           lockoutTime.value = 60 // 60 minutes lockout
         }
+        
+      } else if (response.status === 429) {
+        // Rate limited - extract lockout time from message
+        const message = data.detail || 'Too many attempts'
+        const timeMatch = message.match(/(\d+)\s*minutes/)
+        lockoutTime.value = timeMatch ? parseInt(timeMatch[1]) : 60
+        loginError.value = true
+        accessDenied.value = true
+        
       } else {
-        throw new Error(data.detail || 'Login failed')
+        throw new Error(data.detail || `Login failed: ${response.status}`)
       }
     }
 
   } catch (error) {
-    console.error('🔒 LOGIN ERROR:', error)
+    console.error('🔒 SECURITY ERROR:', error)
     
     // ✅ FIXED: Better error handling
-    if (error.message.includes('Failed to fetch')) {
-      console.error('🌐 NETWORK ERROR: Cannot connect to backend server')
-      console.log('💡 TIP: Check if your Render backend is running and accessible at:', API_BASE_URL)
+    if (error.name === 'AbortError') {
       loginError.value = true
       accessDenied.value = true
-    } else if (error.message.includes('HTTP 404')) {
-      console.error('🔍 ENDPOINT NOT FOUND: Check if the login endpoint exists')
+      console.error('⏰ Login timeout - Backend might be sleeping')
+    } else if (error.message.includes('Failed to fetch')) {
+      trackFailedAttempt()
       loginError.value = true
       accessDenied.value = true
-    } else if (error.message.includes('HTTP 5')) {
-      console.error('🚨 SERVER ERROR: Backend server issue')
-      loginError.value = true
-      accessDenied.value = true
+      console.error('🌐 Network error - Cannot connect to backend server')
     } else {
       trackFailedAttempt()
       loginError.value = true
@@ -537,64 +528,28 @@ const debugAuthStatus = () => {
   console.log('Security Level:', security || 'None')
   console.log('Failed Attempts:', failedAttempts.value)
   console.log('Is Authenticated:', token && expiry && new Date().getTime() < parseInt(expiry))
-  console.log('Backend URL:', API_BASE_URL)
   console.groupEnd()
 }
 
-// ✅ FIXED: Enhanced backend connection test
+// ✅ ADDED: Test backend connection
 const testBackendConnection = async () => {
   try {
     console.log('🧪 Testing backend connection to:', API_BASE_URL)
-    
-    // Try multiple endpoints in case health check doesn't exist
-    const endpoints = ['/api/v1/admin/health', '/api/v1/health', '/health']
-    
-    for (const endpoint of endpoints) {
-      try {
-        const testUrl = `${API_BASE_URL}${endpoint}`
-        console.log(`🔗 Testing: ${testUrl}`)
-        
-        const testResponse = await fetch(testUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (testResponse.ok) {
-          console.log('✅ Backend connection SUCCESSFUL:', testUrl)
-          return true
-        }
-      } catch (endpointError) {
-        console.log(`❌ Endpoint ${endpoint} failed:`, endpointError.message)
-      }
-    }
-    
-    // If all endpoints fail, try a simple head request to the base URL
-    try {
-      const baseResponse = await fetch(API_BASE_URL, { method: 'HEAD' })
-      console.log('🔗 Base URL connection:', baseResponse.status)
-    } catch (baseError) {
-      console.error('❌ ALL connection tests FAILED')
-      console.error('💡 Please check:')
-      console.error('1. Is your Render backend deployed and running?')
-      console.error('2. Is the URL correct?', API_BASE_URL)
-      console.error('3. Are there any CORS issues?')
-    }
-    
-    return false
+    const testResponse = await fetch(`${API_BASE_URL}/api/v1/admin/health`, {
+      signal: AbortSignal.timeout(5000)
+    })
+    console.log('🔗 Backend connection test:', {
+      status: testResponse.status,
+      ok: testResponse.ok,
+      url: API_BASE_URL
+    })
   } catch (testError) {
-    console.error('🔗 Backend connection test FAILED:', testError)
-    return false
+    console.error('🔗 Backend connection FAILED:', testError)
   }
 }
 
 // Initialize security check on component mount
 onMounted(async () => {
-  console.log('🔐 Admin Login Component Mounted')
-  console.log('🌐 Current Environment:', import.meta.env.MODE)
-  console.log('🚀 API Base URL:', API_BASE_URL)
-  
   // Test backend connection first
   await testBackendConnection()
   
@@ -606,8 +561,10 @@ onMounted(async () => {
     clearSecurityTracking()
   }
   
-  // Debug info
-  debugAuthStatus()
+  // Debug info in development
+  if (import.meta.env.DEV) {
+    debugAuthStatus()
+  }
 })
 </script>
 
