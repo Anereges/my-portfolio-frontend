@@ -376,6 +376,7 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -385,9 +386,6 @@ import { User, X, Code2, Shield, Lock, AlertTriangle, ArrowRight, Eye } from 'lu
 
 const router = useRouter()
 const { createParticleEffect } = useAnimations()
-
-// 🚨 IMMEDIATE FIX: HARDCODE THE API URL
-const API_BASE_URL = 'https://my-portfolio-backend-0w34.onrender.com'
 
 // Reactive state
 const activeCategory = ref('all')
@@ -406,12 +404,23 @@ const averageProficiency = computed(() => {
   return Math.round(total / skills.value.length)
 })
 
+// ✅ FIXED: Proper API URL configuration for production
+const getApiBaseUrl = () => {
+  // For production - use your Render backend URL
+  if (import.meta.env.PROD) {
+    return 'https://my-portfolio-backend-0w34.onrender.com'
+  }
+  // For development - use localhost
+  return import.meta.env.VITE_API_URL || 'http://localhost:8000'
+}
+
 // ✅ FIXED: Enhanced fetchSkills function
 const fetchSkills = async () => {
   try {
     loading.value = true
     error.value = null
     
+    const API_BASE_URL = getApiBaseUrl()
     console.log('🔍 Fetching skills from API:', `${API_BASE_URL}/api/v1/skills`)
     
     const response = await fetch(`${API_BASE_URL}/api/v1/skills`, {
@@ -761,6 +770,7 @@ const animateSkillBar = (skill) => {
 
 onMounted(async () => {
   // ✅ ADDED: Test backend connection first
+  const API_BASE_URL = getApiBaseUrl()
   console.log('🧪 Testing backend connection to:', API_BASE_URL)
   
   try {

@@ -210,12 +210,14 @@ import {
   ArrowLeft 
 } from 'lucide-vue-next'
 
-// 🚨 IMMEDIATE FIX: HARDCODE THE API URL
-const API_BASE_URL = 'https://my-portfolio-backend-0w34.onrender.com'
-console.log('🚀 HARDCODED API URL:', API_BASE_URL)
+// ✅ FINAL FIXED VERSION
+// Use environment variable first, fallback to hardcoded URL if needed
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://my-portfolio-backend-0w34.onrender.com';
+console.log('🚀 Using API URL:', API_BASE_URL);
 
-const router = useRouter()
-const { createParticleEffect } = useAnimations()
+const router = useRouter();
+const { createParticleEffect } = useAnimations();
+
 
 // Reactive state
 const loading = ref(false)
