@@ -5,6 +5,7 @@ import { resolve } from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  base: '/', // ← ADD THIS LINE for Render deployment
   server: {
     port: 3000,
     proxy: {
