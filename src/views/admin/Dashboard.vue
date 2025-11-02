@@ -491,8 +491,8 @@ import {
 const router = useRouter()
 const { createParticleEffect, createQuantumEffect } = useAnimations()
 
-// API Configuration
-const BASE_URL = 'https://your-backend-name.onrender.com/api/v1/admin'
+// API Configuration - FIXED: Use environment variable
+const BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/admin'
 
 // Reactive state
 const currentTime = ref('')
@@ -930,7 +930,7 @@ onMounted(() => {
   fetchDashboardData()
   
   // Debug in development
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     debugAuth()
   }
 })
@@ -941,6 +941,7 @@ onUnmounted(() => {
   }
 })
 </script>
+
 
 <style scoped>
 .admin-bg {
