@@ -492,7 +492,7 @@ const router = useRouter()
 const { createParticleEffect, createQuantumEffect } = useAnimations()
 
 // API Configuration
-const BASE_URL = 'http://127.0.0.1:8000/api/v1/admin'
+const BASE_URL = 'https://your-backend-name.onrender.com/api/v1/admin'
 
 // Reactive state
 const currentTime = ref('')
